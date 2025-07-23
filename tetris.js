@@ -11,18 +11,24 @@ let dropStart = Date.now();
 const scale = 20;
 const rows = canvas.height/scale;
 const columns = canvas.width/scale;
-
+let gameOver = false;
 const shapes = [
     [1,1,1,1],// I
     [1,1,1,0,1],// T
     [1,1,1,0,0,1],// L
+    [1,1,1,1,0,0],//
+    [1,1,0,0,1,1],//
+    [0,1,1,1,1],// L
+    [1,1,1,1]
 ]
 const colors = [
     '#ed8787',
     '#6640ff',
     '#40ff69',
     '#d9ff40',
-    '#ffa640'
+    '#ffa640',
+    '#00ff00',
+    '#ffff00'
 ]
 
 let currentPiece = null; //Текущая фигура
@@ -47,7 +53,7 @@ function createPiece() {
         color: color,
         x: Math.floor(columns/2)-2,
         y: -2
-    }
+    };
 };
 
 function drawSquare(x,y, color) {
@@ -102,7 +108,7 @@ function drawNextPiece() {
 
 
 function draw() {
-    ctx.clearRect(0,0,canvas.clientWidth, canvas.height);
+    ctx.clearRect(0,0,canvas.width, canvas.height);
     drawBoard();
     drawPiece();
 }
@@ -112,20 +118,58 @@ function moveDown() {
     if (collision()) {
         currentPiece.y--;
         merge();
-        //removeRows();
+        removeRows();
         currentPiece = nextPiece;
         nextPiece = createPiece();
         drawNextPiece();
-        dropStart = Date.now();
+        if (collision()) {
+            gameOver = true;
+            alert('Игра окончена!')
+            document.location.reload();
+        }
     }
     dropStart = Date.now();
 }
+
+//Управление по стрелкам
+function moveLeft() {
+    currentPiece.x--;
+    if (collision()) {
+        currentPiece.x++;
+    } 
+}
+
+function moveRight() {
+    currentPiece.x++;
+    if (collision()) {
+        currentPiece.x--;
+    } 
+}
+
+document.addEventListener('keydown', function(e) {
+    if (gameOver) return;
+    switch(e.keyCode) {
+        case 37: //стрелка влево
+            moveLeft();
+            break;
+        case 38: //стрелка вверх
+            rotate()
+            break;
+        case 39: //стрелка вправо
+            moveRight();
+            break;
+        case 40:
+            moveDown();
+            break;
+    }
+
+});
+
 //слить фигуры или закрепить предыдущую на поле
 function merge() {
     for (let r = 0; r < 4; r++) {
         for (let c = 0; c < 4; c++) {
-            if (!currentPiece.shape[r*4 + c ]) 
-                continue;
+            if (!currentPiece.shape[r*4 + c ])  continue;
             const boardX = currentPiece.x+c;
             const boardY = currentPiece.y+r;
 
@@ -150,10 +194,8 @@ function gameLoop() {
 
 function collision() {
 for (let r = 0; r < 4; r++) {
-        for (let c = 0; c < 4; c++)
-        {
-            if (!currentPiece.shape[r*4 + c ]) 
-                continue;
+        for (let c = 0; c < 4; c++) {
+            if (!currentPiece.shape[r*4 + c ]) continue;
             const newX = currentPiece.x + c;
             const newY = currentPiece.y + c;
             if (newX < 0 || newX >= columns || newY >=rows) {
@@ -167,6 +209,42 @@ for (let r = 0; r < 4; r++) {
         }
     }
     return false;
+}
+
+function removeRows() {
+    for (let r = rows-1; r>=0; r--) {
+        let isRowFull= true;
+        for (let c = 0; c < columns; c++) {
+            if (!board[r][c]) {
+                isRowFull = false;
+                break;
+            }
+        }
+        if (isRowFull) {
+            for (let y = r; y > 0; y--) {
+                for (let c = 0; c < columns; c++) {
+                    board[y][c] = board[y-1][c];
+                }
+            }
+            for (let c = 0; c< columns; c++) {
+                board[0][c] = 0;
+            }
+            r++; //проверяем строку снова
+        }
+    }
+}
+
+function rotate() {
+    const originalShape = [...currentPiece.shape]
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+            currentPiece.shape[r*4 + c] = originalShape[(3-c)*4 + r];
+        }
+    }
+
+    if (collision()) {
+        currentPiece.shape = originalShape;
+    }
 }
 
 currentPiece = createPiece();
